@@ -1,37 +1,58 @@
 #! /usr/bin/python3
 
 import RPi.GPIO as GPIO
+import time
+import sys, traceback, os
 
-# Use board layout of GPIO
-GPIO.setmode(GPIO.BOARD)
+def main():
+    # Use board layout of GPIO
+    GPIO.setmode(GPIO.BCM)
 
-### Constant pins ###
-## Switches ##
-SWITCH_ONE = 26
+    ### Constant pins ###
+    ## Switches ##
+    SWITCH_ONE = 26
 
-switches = [SWITCH_ONE]
+    switches = [SWITCH_ONE]
 
-## Control Inputs ##
-KEY_SWITCH = 21
-DEPLOY_BUTTON = 20
+    ## Control Inputs ##
+    KEY_SWITCH = 21
+    DEPLOY_BUTTON = 20
 
-### Setup Channels ###
-# Setup switches, defaulting to low
-GPIO.setup(SWITCH_ONE, GPIO.IN, initial=GPIO.LOW)
+    ### Setup Channels ###
+    # Setup switches, defaulting to low
+    GPIO.setup(switches, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# Setup control inputs, defaulting to low
-GPIO.setup(KEY_SWITCH, GPIO.IN, initial=GPIO.LOW)
-GPIO.setup(DEPLOY_BUTTON, GPIO.IN, initial=GPIO.LOW)
+    # Setup control inputs, defaulting to high
+    GPIO.setup(KEY_SWITCH, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(DEPLOY_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    
+    while True:
+	if GPIO.input(KEY_SWITCH)  == False and GPIO.input(DEPLOY_BUTTON) == False:
+	    print('deploy')
+	    time.sleep(0.2)
+            # Check which (if any) switches are enabled
+            enabled_switches = list(filter(gpio_filter, switches))
+            print(len(enabled_switches))
+            if len(enabled_switches) > 0:
+                for switch in enabled_switches:
+                    ## Deploy
+                    print('Deploying {}').format(switch)
 
-while True:
-    # Only proceed if dashboard is armed
-    if (GPIO.input(DEPLOY_BUTTON) and GPIO.input(KEY_SWITCH)):
-        # Check which (if any) switches are enabled
-        enabled_switches = filter(GPIO.input, switches)
-        if len(enabled_switches) > 0:
-            for switch in enabled_switches:
-                ## Deploy
-                print('deploying ' + switch)
+        ## naptime
+        time.sleep(0.01)
 
 
-    time.sleep(0.01)
+def gpio_filter(switch):
+	return GPIO.input(switch) == False
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print ('Interrupted')
+        try:
+            GPIO.cleanup()
+            print('cleaned up GPIO')
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
